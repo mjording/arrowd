@@ -1,0 +1,67 @@
+JavaScript, being a single-threaded language, makes extensive use of event-driven programming 
+to enable responsive web applications. However, standard approaches to sequencing events are
+messy, and often lead to code that is difficult to understand and maintain.
+Arrows, a generalization of monads, are an elegant solution to this problem. 
+arrowd allows easy asynchronous programing in small, modular units of code, and flexibly compose them in many different ways, 
+while nicely abstracting the details of asynchronous program composition. 
+arrowd can be used construct a variety of state machine-based constructs, such as autoscrollers and drag-and-drop 
+handlers.
+ 
+ Most JavaScript programs are written in an event-driven style, in which programs register callback functions 
+that are triggered on events such as timeouts or mouse clicks. A single-threaded event loop dispatches the 
+appropriate callback when an event occurs, and control returns back to the loop when the callback completes.
+ 
+  To keep web applications responsive, it is crucial that callbacks execute quickly so that new events are handled 
+soon after they occur. Thus to implement non-trivial features like long-running loops (e.g., for animations) or 
+state machines (e.g., to implement drag and-drop), programmers must chain callbacks together—each call 
+back ends by registering one or more additional callbacks. For example, each iteration of a loop would end by 
+registering the current callback with a (short) timeout. Unfortunately, this style of event driven programming is 
+tedious, error-prone, and hampers reuse. The callback sequencing code is strewn throughout the program, and very 
+often each callback must hard-code the names of the next events and callbacks in the chain.
+ 
+ Arrowd is based largely on Arrows (Hughes 2000), a programming pattern closely related to monads, used extensively in Haskell. 
+ An arrow abstraction resembles a normal function, with the key feature that an arrow can be 
+composed in various was to create new arrows. The core composition operator is sequencing: if f and g are arrows then 
+f >> g is an arrow that first runs f and then runs g.
+ 
+ 
+In arrowd, arrows are based on functions written in continuation passing style (CPS). 
+A CPS function takes a normal argument x and a continuation k, and completes by calling k with the result produced 
+by the function. We provide event arrows, built around a CPS function that registers its continuation argument
+with a particular event. Users write handler functions that process particular events and lift them to arrows. 
+An event arrow can then be composed with a handler arrow to create a single arrow that registers an event and 
+handles it when the event occurs. We also provide looping and either-or composition operators, and include support 
+for cancellation.
+ 
+ 
+ 
+   With arrowd, the code for handling events is clearly separated from the “plumbing” code required to chain 
+event handlers together. This makes code easier to understand, change, and reuse: the flow of control is clearly 
+evident in the composition of handlers, and the same handlers can be chained in different ways and set to respond 
+to different events. This same motivation led to the recent development of a thread monad in Haskell (Li and 
+Zdancewic 2007). In this monad, threads are constructed by composing CPS functions, each of which concludes by 
+yielding control to the scheduler after registering a handler for some event (e.g., a timeout or I/O). arrowd
+ generalizes thread monads with a richer set of combinators needed for our setting.
+ 
+ Here is a simple model for using arrowd for drag and drop.
+ 
+function setupA(event) {
+  /∗ setup drag−and−drop ∗/
+  return event.currentTarget;
+}
+function dragA(event) {
+  /∗ perform dragging ∗/
+  return event.currentTarget;
+}
+function dropA(event) {
+  /∗ perform dropping ∗/
+  return event.currentTarget;
+}
+function cancelA(event) {
+  /∗ cancel drag−and−drop ∗/
+  return event.currentTarget;
+}
+ 
+var dragOrDropA = ((EventA(”mousemove”).next(dragA).next(Repeat)).or(EventA(”mouseup”).next(dropA).next(Done))).repeat()
+var dragDropCancelA = (EventA(”mousemove”).next(dragA).next(dragOrDropA)).or(EventA(”mouseup”).next(cancelA))
+ConstA(document.getElementById(”dragtarget”)).next(EventA(”mousedown”)).next(setupA).next(dragDropCancelA).run();
