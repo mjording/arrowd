@@ -132,9 +132,9 @@
       
   };
   
-  Function prototype.repeat = function(interval){
+  Function.prototype.repeat = function(interval){
      return this.AsyncA().repeat(interval);
-  }
+  };
  
   AsyncA.prototype.or = function(g){
     var f = this;
